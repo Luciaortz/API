@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agricultura en Colombia </title>
+
+    <link rel="stylesheet" href="rendimientosdecultivos.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<header>
+    <h1> RENDIMIENTO DE CULTIVOS EN COLOMBIA POR AÑO</h1>
+</header>
+<div class="descripcion">
+    <p>
+        Las Evaluaciones Agropecuarias Municipales (EVA) de Colombia reúnen
+        informción sobre los cultivos en cada municipio, como el tipo de cultivo,
+        área sembrada y cosechada, producción, rendimiento, departamento,
+        municipio y año. Estos datos permiten analizar la producción agrícola
+        del país.
+    </p>
+</div>
+<div class="contenedor">
+    <div class="tarjetas">
+        <div class="tarjeta">
+            <h2 id="numDeptos">0</h2>
+            <p>Departamentos</p>
+        </div>
+        <div class="tarjeta">
+            <h2 id="numCultivos">0</h2>
+            <p>Cultivos</p>
+        </div>
+        <div class="tarjeta">
+            <h2 id="areaTotal">0</h2>
+            <p>Área sembrada (ha)</p>
+        </div>
+    </div>
+    <div class="panel">
+        <h2>Cultivos más sembrados en Colombia</h2>
+        <div class="panelgraficageneral">
+            <canvas id="graficaGeneral"></canvas>
+        </div>
+    </div>
+    <div class="filtros">
+        <label for="departamento">Selecciona un departamento:</label><br>
+        <select id="departamento"></select>
+    </div>
+    <div class="contenidodepartamento">
+        <div class="panel">
+            <h2>Área sembrada por cultivo</h2>
+            <div class="panelgraficacultivos">
+                <canvas id="graficaCultivos"></canvas>
+            </div>
+        </div>
+        <div class="tablapanel">
+            <h2>Información del departamento seleccionado</h2>
+            <table>
+                <thead>
+                <tr>
+                    <th>Cultivo</th>
+                    <th>Área sembrada (ha)</th>
+                    <th>Producción (t)</th>
+                    <th>Municipios</th>
+                </tr>
+                </thead>
+                <tbody id="tablaDatos"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script>
+    const API = "https://www.datos.gov.co/resource/2pnw-mmge.json?$limit=5000";
+    let datos = [];
+    let graficaCultivos;
+    let graficaGeneral;
+    const colores = [
+        "#1B5E20",
+        "#2E7D32",
+        "#388E3C",
+        "#43A047",
+        "#4CAF50",
+        "#66BB6A",
+        "#81C784",
+        "#A5D6A7",
+        "#C8E6C9",
+        "#E8F5E9"
+    ];
+    function convertirNumero(valor) {
+        if (!valor) return 0;
+        return parseFloat(
+            valor.toString()
+                .replace(/\./g, "")
+                .replace(",", ".")
+        ) || 0;
+    }
+    function normalizar(texto) {
+        if (texto == null || texto == "") {
+            return "sin dato";
+        }
+        texto = texto.trim();
+        texto = texto.toLowerCase();
+        return texto;
+    }
+    function capitalizar(texto) {
+        if (texto == null || texto == "") {
+            return "Sin dato";
+        }
+        texto = texto.trim();
+        texto = texto.toLowerCase();
+        let primera = texto.charAt(0).toUpperCase();
+        let resto = texto.slice(1);
+        return primera + resto;
+    }
+    async function cargarDatos() {
+        try {
+            let respuesta = await fetch(API);
+            datos = await respuesta.json();
+            let departamentos = [];
+            for (let i = 0; i < datos.length; i++) {
+                if (datos[i].departamento) {
+                    let dep = datos[i].departamento.trim();
+                    if (!departamentos.includes(dep)) {
+                        departamentos.push(dep);
+                    }
+                }
+            }
+            departamentos.sort();
+            let cultivos = [];
+            for (let i = 0; i < datos.length; i++) {
+                let cultivo = datos[i].cultivo;
+                if (!cultivo) {
+                    cultivo = datos[i].desagregaci_n_regional_y;
+                }
+                if (cultivo) {
+                    cultivo = normalizar(cultivo);
+                    if (!cultivos.includes(cultivo)) {
+                        cultivos.push(cultivo);
+                    }
+                }
+            }
+            let areaTotal = 0;
+            for (let i = 0; i < datos.length; i++) {
+                areaTotal = areaTotal + convertirNumero(datos[i].rea_sembrada_ha);
+            }
+            document.getElementById("numDeptos").textContent = departamentos.length;
+            document.getElementById("numCultivos").textContent = cultivos.length;
+            document.getElementById("areaTotal").textContent = Math.round(areaTotal).toLocaleString();
+            let select = document.getElementById("departamento");
+            for (let i = 0; i < departamentos.length; i++) {
+                let option = document.createElement("option");
+                option.value = departamentos[i];
+                option.textContent = departamentos[i];
+                select.appendChild(option);
+            }
+            select.addEventListener("change", mostrarDepartamento);
+            crearGraficaGeneral();
+            mostrarDepartamento();
+        } catch (error) {
+            console.log(error);
+            alert("Error al cargar los datos");
+        }
+    }
+    function crearGraficaGeneral() {
+        let acumulado = {};
+        for (let i = 0; i < datos.length; i++) {
+            let cultivo = datos[i].cultivo;
+            if (!cultivo) {
+                cultivo = datos[i].desagregaci_n_regional_y;
+            }
+            if (!cultivo) {
+                cultivo = "sin dato";
+            }
+            cultivo = normalizar(cultivo);
+            let area = convertirNumero(datos[i].rea_sembrada_ha);
+            if (acumulado[cultivo]) {
+                acumulado[cultivo] = acumulado[cultivo] + area;
+            } else {
+                acumulado[cultivo] = area;
+            }
+        }
+        let arreglo = [];
+        for (let cultivo in acumulado) {
+            arreglo.push([cultivo, acumulado[cultivo]]);
+        }
+        arreglo.sort(function(a, b) {
+            return b[1] - a[1];
+        });
+        let top = arreglo.slice(0, 10);
+        let nombres = [];
+        let areas = [];
+        for (let i = 0; i < top.length; i++) {
+            nombres.push(capitalizar(top[i][0]));
+            areas.push(Math.round(top[i][1]));
+        }
+        if (graficaGeneral) {
+            graficaGeneral.destroy();
+        }
+        graficaGeneral = new Chart(document.getElementById("graficaGeneral"), {
+            type: "bar",
+            data: {
+                labels: nombres,
+                datasets: [{
+                    label: "Área sembrada (ha)",
+                    data: areas,
+                    backgroundColor: [
+                        "#2e7d32", "#43a047", "#66bb6a", "#81c784", "#A5D6A7", "#388E3C", "#4CAF50", "#7CB342",
+                        "#9CCC65", "#C0CA33"], borderRadius: 8}]},
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });}
+    function mostrarDepartamento() {
+        let departamento = document.getElementById("departamento").value;
+        let filtrados = [];
+        for (let i = 0; i < datos.length; i++) {
+            if (datos[i].departamento) {
+                if (datos[i].departamento.trim() == departamento) {
+                    filtrados.push(datos[i]);
+                }
+            }
+        }
+        let agrupado = {};
+        for (let i = 0; i < filtrados.length; i++) {
+            let cultivo = filtrados[i].cultivo;
+            if (!cultivo) {
+                cultivo = filtrados[i].desagregaci_n_regional_y;
+            }
+            if (!cultivo) {
+                cultivo = "sin dato";
+            }
+            cultivo = normalizar(cultivo);
+            let area = convertirNumero(filtrados[i].rea_sembrada_ha);
+            let produccion = convertirNumero(filtrados[i].producci_n_t);
+            let municipio = filtrados[i].municipio;
+            if (!municipio) {
+                municipio = "Sin dato";
+            }
+            if (!agrupado[cultivo]) {
+                agrupado[cultivo] = {
+                    area: 0,
+                    produccion: 0,
+                    municipios: []
+                };
+            }
+            agrupado[cultivo].area = agrupado[cultivo].area + area;
+            agrupado[cultivo].produccion = agrupado[cultivo].produccion + produccion;
+            if (!agrupado[cultivo].municipios.includes(municipio)) {
+                agrupado[cultivo].municipios.push(municipio);
+            }
+        }
+        let arreglo = [];
+        for (let cultivo in agrupado) {
+            arreglo.push([cultivo, agrupado[cultivo]]);
+        }
+        arreglo.sort(function(a, b) {
+            return b[1].area - a[1].area;
+        });
+        let top = arreglo.slice(0, 10);
+        let nombres = [];
+        let areas = [];
+        for (let i = 0; i < top.length; i++) {
+            nombres.push(capitalizar(top[i][0]));
+            areas.push(Math.round(top[i][1].area));
+        }
+        if (graficaCultivos) {
+            graficaCultivos.destroy();
+        }
+        graficaCultivos = new Chart(document.getElementById("graficaCultivos"), {
+            type: "pie",
+            data: {
+                labels: nombres,
+                datasets: [{
+                    data: areas,
+                    backgroundColor: colores
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: "bottom"
+                    }
+                }
+            }
+        });
+        let tabla = document.getElementById("tablaDatos");
+        tabla.innerHTML = "";
+        for (let i = 0; i < top.length; i++) {
+            let cultivo = top[i][0];
+            let info = top[i][1];
+            let color = colores[i];
+            if (!color) {
+                color = "#ccc";
+            }
+            let municipios = info.municipios.slice(0, 3).join(", ");
+            let fila = document.createElement("tr");
+            fila.innerHTML =
+                "<td>" +
+                "<span class='cuadrocolor' style='background:" + color + ";'></span>" +
+                capitalizar(cultivo)  +
+                "</td>" +
+                "<td>" + Math.round(info.area).toLocaleString() + "</td>" +
+                "<td>" + Math.round(info.produccion).toLocaleString() + "</td>" +
+                "<td>" + municipios + "</td>";
+            tabla.appendChild(fila);
+        }
+    }
+    cargarDatos();
+</script>
+</body>
+</html>
