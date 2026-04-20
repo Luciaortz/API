@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deezer Explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-brand">Deezer Explorer</div>
+    <ul class="nav-links">
+      <li><a href="#" class="nav-link active" data-page="buscar">Buscar</a></li>
+      <li><a href="#" class="nav-link" data-page="charts">Charts</a></li>
+      <li><a href="#" class="nav-link" data-page="torneo">Torneo</a></li>
+      <li><a href="#" class="nav-link" data-page="adivina">Adivina</a></li>
+    </ul>
+  </nav>
+
+  <!-- PAGES -->
+  <main class="main">
+
+    <!-- BUSCAR -->
+    <section class="page active" id="page-buscar">
+      <div class="page-header">
+        <h1>Buscar</h1>
+        <p>Encuentra canciones, artistas o álbumes</p>
+      </div>
+      <div class="search-bar-wrap">
+        <div class="search-type-tabs">
+          <button class="tab-btn active" data-type="track">Canciones</button>
+          <button class="tab-btn" data-type="artist">Artistas</button>
+          <button class="tab-btn" data-type="album">Álbumes</button>
+        </div>
+        <div class="search-input-wrap">
+          <input type="text" id="search-input" placeholder="Escribe para buscar..." autocomplete="off" />
+          <span class="search-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+        </div>
+      </div>
+      <div id="search-results" class="results-grid"></div>
+    </section>
+
+    <!-- CHARTS -->
+    <section class="page" id="page-charts">
+      <div class="page-header">
+        <h1>Charts</h1>
+        <p>Las canciones más populares por género o artista</p>
+      </div>
+      <div class="chart-controls">
+        <div class="control-group">
+          <label>Tipo de filtro</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="chart-filter" value="genre" checked /> Género
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="chart-filter" value="artist" /> Artista
+            </label>
+          </div>
+        </div>
+        <div class="control-group" id="genre-selector-wrap">
+          <label>Género</label>
+          <select id="genre-select">
+            <option value="0">Todos los géneros</option>
+            <option value="132">Pop</option>
+            <option value="116">Rap / Hip-Hop</option>
+            <option value="152">Rock</option>
+            <option value="113">Dance</option>
+            <option value="165">R&B / Soul</option>
+            <option value="106">Electrónica</option>
+            <option value="85">Reggaeton</option>
+            <option value="144">Latino</option>
+            <option value="197">K-Pop</option>
+            <option value="464">Alternativo</option>
+            <option value="169">Country</option>
+            <option value="75">Jazz</option>
+            <option value="98">Clásica</option>
+          </select>
+        </div>
+        <div class="control-group hidden" id="artist-search-wrap">
+          <label>Artista</label>
+          <input type="text" id="chart-artist-input" placeholder="Nombre del artista..." />
+          <div id="chart-artist-suggestions" class="suggestions-list"></div>
+        </div>
+        <button id="btn-generate-chart" class="btn-primary">Generar gráfico</button>
+      </div>
+      <div id="chart-container"></div>
+    </section>
+
+    <!-- TORNEO -->
+    <section class="page" id="page-torneo">
+      <div class="page-header">
+        <h1>Torneo</h1>
+        <p>Selecciona 16 canciones y decide cuál es tu favorita</p>
+      </div>
+      <div id="torneo-selection-phase">
+        <div class="search-input-wrap">
+          <input type="text" id="torneo-search-input" placeholder="Busca una canción para agregar..." autocomplete="off" />
+          <span class="search-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+        </div>
+        <div id="torneo-search-suggestions" class="suggestions-list"></div>
+        <div class="torneo-selected-header">
+          <span id="torneo-count">0 / 16 canciones seleccionadas</span>
+          <button id="btn-start-torneo" class="btn-primary" disabled>Iniciar torneo</button>
+        </div>
+        <div id="torneo-selected-list" class="torneo-selected-list"></div>
+      </div>
+      <div id="torneo-bracket-phase" class="hidden">
+        <div id="torneo-bracket" class="bracket-container"></div>
+        <div id="torneo-winner-banner" class="hidden winner-banner">
+          <div class="winner-inner">
+            <div class="winner-label">Ganador del torneo</div>
+            <img id="winner-img" src="" alt="" />
+            <div id="winner-title" class="winner-title"></div>
+            <div id="winner-artist" class="winner-artist"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADIVINA -->
+    <section class="page" id="page-adivina">
+      <div class="page-header">
+        <h1>Adivina</h1>
+        <p>Escucha el fragmento y adivina la canción</p>
+      </div>
+      <div class="adivina-controls-top">
+        <div class="control-group">
+          <label>Género</label>
+          <select id="adivina-genre-select">
+            <option value="0">Todos los géneros</option>
+            <option value="132">Pop</option>
+            <option value="116">Rap / Hip-Hop</option>
+            <option value="152">Rock</option>
+            <option value="113">Dance</option>
+            <option value="165">R&B / Soul</option>
+            <option value="106">Electrónica</option>
+            <option value="85">Reggaeton</option>
+            <option value="144">Latino</option>
+            <option value="197">K-Pop</option>
+            <option value="464">Alternativo</option>
+            <option value="169">Country</option>
+            <option value="75">Jazz</option>
+            <option value="98">Clásica</option>
+          </select>
+        </div>
+      </div>
+      <div class="adivina-player-wrap">
+        <div class="visualizer-container">
+          <canvas id="visualizer-canvas"></canvas>
+          <div class="player-controls">
+            <button id="btn-play-adivina" class="play-btn">
+              <svg id="play-icon" width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+              <svg id="pause-icon" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" class="hidden"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            </button>
+            <div class="progress-wrap">
+              <div id="adivina-progress" class="progress-bar"><div id="adivina-progress-fill" class="progress-fill"></div></div>
+              <span id="adivina-time" class="time-label">0:00</span>
+            </div>
+          </div>
+        </div>
+        <audio id="adivina-audio" crossorigin="anonymous"></audio>
+      </div>
+      <div class="adivina-counters">
+        <div class="counter-box">
+          <span class="counter-label">Intento</span>
+          <span id="counter-intentos" class="counter-value">0</span>
+        </div>
+        <div class="counter-box">
+          <span class="counter-label">Puntaje</span>
+          <span id="counter-puntaje" class="counter-value">0.00</span>
+        </div>
+      </div>
+      <div class="adivina-table">
+        <div class="adivina-row header-row">
+          <span>Campo</span>
+          <span>Respuesta real</span>
+          <span>Tu respuesta</span>
+          <span></span>
+        </div>
+        <div class="adivina-row" data-field="title">
+          <span class="field-label">Título</span>
+          <span class="real-value hidden" id="real-title">—</span>
+          <input type="text" class="adivina-input" id="ans-title" placeholder="Escribe aquí..." />
+          <button class="btn-verificar" data-field="title">Verificar</button>
+        </div>
+        <div class="adivina-row" data-field="artist">
+          <span class="field-label">Artista</span>
+          <span class="real-value hidden" id="real-artist">—</span>
+          <input type="text" class="adivina-input" id="ans-artist" placeholder="Escribe aquí..." />
+          <button class="btn-verificar" data-field="artist">Verificar</button>
+        </div>
+        <div class="adivina-row" data-field="album">
+          <span class="field-label">Álbum</span>
+          <span class="real-value hidden" id="real-album">—</span>
+          <input type="text" class="adivina-input" id="ans-album" placeholder="Escribe aquí..." />
+          <button class="btn-verificar" data-field="album">Verificar</button>
+        </div>
+        <div class="adivina-row" data-field="duration">
+          <span class="field-label">Duración (seg)</span>
+          <span class="real-value hidden" id="real-duration">—</span>
+          <input type="text" class="adivina-input" id="ans-duration" placeholder="Escribe aquí..." />
+          <button class="btn-verificar" data-field="duration">Verificar</button>
+        </div>
+      </div>
+      <div class="adivina-actions">
+        <button id="btn-verificar-todo" class="btn-primary">Verificar todo</button>
+        <button id="btn-siguiente-cancion" class="btn-secondary">Siguiente canción</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    Presentado por: <span>Samuel García y Laura Ortiz</span>
+  </footer>
+
+  <!-- MODAL -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div id="modal-box" class="modal-box">
+      <button id="modal-close" class="modal-close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
